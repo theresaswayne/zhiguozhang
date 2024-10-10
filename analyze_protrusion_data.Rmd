@@ -1,0 +1,76 @@
+---
+title: "Analysis of cell protrusions"
+output: html_notebook
+---
+
+This notebook collects and summarizes data from skeleton analysis of cell protrusions.
+
+```{r setup}
+require(tidyverse)
+require(dplyr)
+
+```
+
+The analyze_protrusions.ijm script produces a set of output files, with the following naming conventions:
+
+-   XXX_branch_info.csv
+
+-   XXX_skel_info.csv
+
+where XXX is the base name of the original input file.
+
+All of these files are saved in a single folder.
+
+*Load and merge branch data files
+
+When prompted, select any file within the folder containing the data.
+
+```{r load and merge branch data}
+
+branchSuffix = "_branch_info.csv"
+selectedFile <- file.choose()
+inputFolder <- dirname(selectedFile) # the input is the parent of the selected file
+outputFolder <- dirname(inputFolder) # parent of the input folder
+
+# get file names for branch info
+files <- dir(inputFolder, pattern = paste("*",branchSuffix,sep=""))
+
+# tibble is used because of the warning that data_frame is deprecated.
+mergedDataWithNames <- tibble(filename = files) %>% # tibble holding file names
+  mutate(file_contents =
+           map(filename,          # read files into a new data column
+               ~ read_csv(file.path(inputFolder, .),
+                          locale = locale(encoding = "latin1"),
+                          na = c("", "N/A"),
+                          show_col_types = FALSE)))
+
+# unnest to make the list into a flat file again,
+# but it now has 1 extra column to hold the filename
+mergedDataFlat <- unnest(mergedDataWithNames, cols = c(file_contents))
+
+# put the original file base name into a separate column
+origfile = str_extract(mergedDataFlat$filename, "[^_]+")
+
+mergedDataFlat <- mergedDataFlat %>%
+  mutate(ImageFile = origfile, .before = 1)
+
+# Write an output file of all the merged data ----------
+
+outputFile = paste(basename(inputFolder), "merged", branchSuffix) # spaces will be inserted
+write_csv(mergedDataFlat,file.path(outputFolder, outputFile))
+
+
+```
+
+Calculate the total branch length for each image
+
+```{r summarize}
+length_total <- mergedDataFlat %>%
+  group_by(ImageFile) %>%
+  summarize(Total_Length = sum(`Branch length`))
+
+outputFile = paste(basename(inputFolder), "total", branchSuffix) # spaces will be inserted
+write_csv(length_total,file.path(outputFolder, outputFile))
+
+```
+
