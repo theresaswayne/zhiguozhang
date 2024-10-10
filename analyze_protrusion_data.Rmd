@@ -62,14 +62,15 @@ write_csv(mergedDataFlat,file.path(outputFolder, outputFile))
 
 ```
 
-Calculate the total branch length for each image
+Calculate the total and median branch length for each image
 
 ```{r summarize}
 length_total <- mergedDataFlat %>%
   group_by(ImageFile) %>%
-  summarize(Total_Length = sum(`Branch length`))
+  summarize(Total_Length = sum(`Branch length`),
+            MedianBranch = median(`Branch length`))
 
-outputFile = paste(basename(inputFolder), "total", branchSuffix) # spaces will be inserted
+outputFile = paste(basename(inputFolder), "summary", branchSuffix) # spaces will be inserted
 write_csv(length_total,file.path(outputFolder, outputFile))
 
 ```

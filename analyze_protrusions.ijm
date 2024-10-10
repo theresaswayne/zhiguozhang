@@ -131,7 +131,7 @@ function processFile(input, output, file, channel, filenumber) {
 	run("Fill Holes"); // make cell bodies into solid objects that don't contribute much to the skeleton
 	run("Skeletonize (2D/3D)");
 	// measure the segments of the skeleton
-	run("Analyze Skeleton (2D/3D)", "prune=none show");
+	run("Analyze Skeleton (2D/3D)", "prune=none prune_0 show");
 	selectImage("Mask of result");
 	rename("Skeleton");
 
