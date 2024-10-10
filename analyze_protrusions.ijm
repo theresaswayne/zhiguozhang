@@ -131,7 +131,7 @@ function processFile(input, output, file, channel, filenumber) {
 	run("Fill Holes"); // make cell bodies into solid objects that don't contribute much to the skeleton
 	run("Skeletonize (2D/3D)");
 	// measure the segments of the skeleton
-	run("Analyze Skeleton (2D/3D)", "prune=none prune_0 show");
+	run("Analyze Skeleton (2D/3D)", "prune=none show");
 	selectImage("Mask of result");
 	rename("Skeleton");
 
@@ -149,9 +149,10 @@ function processFile(input, output, file, channel, filenumber) {
 	// add the overlay of cells
 	run("From ROI Manager");
 
-
-	// ---- Calculate branch length ----
 	
+
+	// ---- Calculate total branch length per image ----
+	// TODO: Why is this not reflecting the pruned skeletons?
 	selectWindow("Results");
 	totalLength = 0;
 	for (row=0; row<nResults; row++) {
@@ -165,6 +166,12 @@ function processFile(input, output, file, channel, filenumber) {
 		totalLength = totalLength + skelLength;
 	    
 	}
+
+	// ---- Calculate median branch length per image ---
+
+	selectWindow("Branch information");
+	lengths = Table.getColumn("Branch length", "Branch information");
+	medianLength = median(lengths);
 	
 	// ---- Update skeleton data ---- 
 	
@@ -172,6 +179,7 @@ function processFile(input, output, file, channel, filenumber) {
 	Table.set("Total Length", filenumber, totalLength, summaryTable);
 	Table.set("Number of cells", filenumber, cellNum, summaryTable);
 	Table.set("Normalized length", filenumber, totalLength/cellNum, summaryTable);
+	Table.set("Median branch length", filenumber, medianLength, summaryTable);
 	Table.update(summaryTable);
 
 	
@@ -213,5 +221,16 @@ function processFile(input, output, file, channel, filenumber) {
 	selectWindow(branchDataName); // close branch results
 	run("Close");
 	run("Clear Results"); // clear skeleton results
-}
+} // processFile function
 
+
+function median(x){
+	// determine the median of an array
+	x=Array.sort(x);
+	if (x.length%2>0.5) {
+		m=x[floor(x.length/2)];
+	}else{
+		m=(x[x.length/2]+x[x.length/2-1])/2;
+	};
+	return m
+}
