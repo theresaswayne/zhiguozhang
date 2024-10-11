@@ -130,16 +130,25 @@ function processFile(input, output, file, channel, filenumber) {
 	selectImage("Mask of result");
 	run("Fill Holes"); // make cell bodies into solid objects that don't contribute much to the skeleton
 	run("Skeletonize (2D/3D)");
-	// measure the segments of the skeleton
-	run("Analyze Skeleton (2D/3D)", "prune=none show");
-	selectImage("Mask of result");
-	rename("Skeleton");
-
-
+	
 	// remove short (usually artifactual) segments from the skeleton -- more accurate than pruning end segments in Analyze
-	prune_by_size("Skeleton",30);
+	selectImage("Mask of result");
+	run("Analyze Particles...", "size=10-Infinity circularity=0.00-1 show=Masks");
+	selectImage("Mask of Mask of result");
+	rename("Skeleton");
+	
+	// script by igancio arganda, image.sc forum https://forum.image.sc/t/analyzeskeleton-gui-prune-by-length/3657/18?u=iarganda
+	// the beanshell script prunebysize_.bsh must be in the fiji plugins/scripts folder!
+	// threshold is length in pixels -- smaller segments will be eliminated
+	run("prunebysize ", "image=Skeleton threshold=30.0");
 	
 	
+	// measure the segments of the skeleton
+	selectImage("Skeleton-pruned");
+	//rename("Skeleton");
+	run("Analyze Skeleton (2D/3D)", "prune=none show");
+
+		
 	// Overlay skeleton and orig image
 	//run("Merge Channels...", "c1=Skeleton c2=orig create keep");
 	run("Merge Channels...", "c1=Skeleton-pruned c2=orig create keep");
@@ -202,7 +211,7 @@ function processFile(input, output, file, channel, filenumber) {
 	saveAs("tiff", output + File.separator + overlayName);
 	
 	skelName = basename+"_skeleton.tif";
-	selectImage("Skeleton");
+	selectImage("Skeleton-pruned");
 	saveAs("tiff", output + File.separator + skelName);
 	
 	skelDataName = basename + "_skel_info.csv";
@@ -241,12 +250,4 @@ function median(x){
 	return m
 }
 
-
-function prune_by_size(skeleton, thresh) {
-	// by igancio arganda, image.sc forum https://forum.image.sc/t/analyzeskeleton-gui-prune-by-length/3657/18?u=iarganda
-	// the beanshell script prunebysize_.bsh must be in the fiji plugins/scripts folder!
-	// threshold is length in pixels -- smaller segments will be eliminated
-	run("prunebysize", "image="+skeleton+" threshold="+thresh);
-	return;
-}
 
