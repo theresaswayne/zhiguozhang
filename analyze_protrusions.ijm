@@ -135,8 +135,14 @@ function processFile(input, output, file, channel, filenumber) {
 	selectImage("Mask of result");
 	rename("Skeleton");
 
+
+	// remove short (usually artifactual) segments from the skeleton -- more accurate than pruning end segments in Analyze
+	prune_by_size("Skeleton",30);
+	
+	
 	// Overlay skeleton and orig image
-	run("Merge Channels...", "c1=Skeleton c2=orig create keep");
+	//run("Merge Channels...", "c1=Skeleton c2=orig create keep");
+	run("Merge Channels...", "c1=Skeleton-pruned c2=orig create keep");
 	selectImage("Composite");
 	rename(basename + "_overlay");
 	// Property.set("CompositeProjection", "null");
@@ -152,7 +158,7 @@ function processFile(input, output, file, channel, filenumber) {
 	
 
 	// ---- Calculate total branch length per image ----
-	// TODO: Why is this not reflecting the pruned skeletons?
+
 	selectWindow("Results");
 	totalLength = 0;
 	for (row=0; row<nResults; row++) {
@@ -234,3 +240,13 @@ function median(x){
 	};
 	return m
 }
+
+
+function prune_by_size(skeleton, thresh) {
+	// by igancio arganda, image.sc forum https://forum.image.sc/t/analyzeskeleton-gui-prune-by-length/3657/18?u=iarganda
+	// the beanshell script prunebysize_.bsh must be in the fiji plugins/scripts folder!
+	// threshold is length in pixels -- smaller segments will be eliminated
+	run("prunebysize", "image="+skeleton+" threshold="+thresh);
+	return;
+}
+
