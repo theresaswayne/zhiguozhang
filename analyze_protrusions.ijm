@@ -5,9 +5,10 @@
 
 
 // analyze_protrusions.ijm
-// Theresa Swayne for Xu Zhang, 2024
+// by Theresa Swayne for Xu Zhang, 2024
 // identifies processes in 2d fluorescence images and determines length and other parameters
-
+// Thanks to Ignacio Argando Carreras for the beanshell script prunebysize_.bsh 
+// Note that prunebysize_.bsh must be in the fiji plugins/scripts folder!
 
 // TO USE: Run the macro and specify folders for input and output.
 // If images are multichannel, select the channel to use for analysis.
@@ -62,7 +63,6 @@ function processFile(input, output, file, channel, filenumber) {
 	
 	path = input + File.separator + file;
 
-	
 	// ---- Open image and get information ----
 	run("Bio-Formats", "open=&path");
 	id = getImageID();
