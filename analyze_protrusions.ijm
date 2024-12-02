@@ -2,6 +2,7 @@
 // @File(label = "Output folder:", style = "directory") outputDir
 // @String (label = "File suffix", value = ".nd2") fileSuffix
 // @int(label= "Channel to analyze", style = "spinner", val = 1) channelNum
+// @int(label= "Branch length threshold in um", style = "spinner", val = 1) lengthScaled
 
 
 // analyze_protrusions.ijm
@@ -71,8 +72,9 @@ function processFile(input, output, file, channel, filenumber) {
 	basename = substring(title, 0, dotIndex);
 	extension = substring(title, dotIndex);
 	getDimensions(width, height, channels, slices, frames);
+	getVoxelSize(voxwidth, voxheight, depth, unit);
 	print("Processing",title, "with basename",basename);
-	
+
 	// ---- Prepare images ----
 	if (channels > 1) {
 	
@@ -92,7 +94,6 @@ function processFile(input, output, file, channel, filenumber) {
 	
 	// ---- Segmentation of cell bodies
 	
-	// this count is used to normalize the skeleton length later
 	selectImage("orig");
 	run("Duplicate...", "title=Cells");
 	selectImage("Cells");
@@ -100,12 +101,34 @@ function processFile(input, output, file, channel, filenumber) {
 	run("Convert to Mask");
 	run("Options...", "iterations=5 count=1 do=Open");
 	run("Watershed");
+	// count cell bodies and add to ROI Mgr
 	run("Analyze Particles...", "size=100-Infinity show=Nothing add clear summarize");
 	selectWindow("Summary");
 	IJ.renameResults("Summary","Results");
 	cellNum = getResult("Count", 0);
 	//roiManager("Save", output + basename + "_cellROIs.zip");
 
+	// ---- Mask out cell bodies so they don't distort the skeleton
+	
+	// check for ROIs
+	numROIs = roiManager("count");
+	//	if (numROIs == 0) {
+	//		showMessage("There are no ROIs saved. Draw ROIs around cells and press T to add each one to the Manager. Then run the macro.");
+	//		exit;
+	//	}
+	roiManager("Deselect");
+	run("Select None");
+	getStatistics(area, mean, min, max, std, histogram);
+	setBackgroundColor(min, min, min);
+
+	for(roiIndex=0; roiIndex < numROIs; roiIndex++) // loop through ROIs
+		{ 
+		selectImage(img);
+		roiManager("Select", roiIndex);  // ROI indices start with 0
+		run("Enlarge...", "enlarge=1"); // pixel units
+		run("Clear", "slice");
+		}
+	
 	// ---- Segmentation of processes ----
 	
 	// apply a local threshold to identify cell area including processes	
@@ -137,17 +160,17 @@ function processFile(input, output, file, channel, filenumber) {
 	selectImage("Mask of Mask of result");
 	rename("Skeleton");
 	
-	// script by igancio arganda, image.sc forum https://forum.image.sc/t/analyzeskeleton-gui-prune-by-length/3657/18?u=iarganda
+	// use a script by Ignacio Arganda, from image.sc forum https://forum.image.sc/t/analyzeskeleton-gui-prune-by-length/3657/18?u=iarganda
 	// the beanshell script prunebysize_.bsh must be in the fiji plugins/scripts folder!
-	// threshold is length in pixels -- smaller segments will be eliminated
-	run("prunebysize ", "image=Skeleton threshold=30.0");
+	// threshold is user-supplied length in microns -- any smaller segments will be eliminated
 	
+	lengthPix = lengthScaled/voxwidth;
+	run("prunebysize ", "image=Skeleton threshold="+lengthPix);
 	
 	// measure the segments of the skeleton
 	selectImage("Skeleton-pruned");
 	//rename("Skeleton");
 	run("Analyze Skeleton (2D/3D)", "prune=none show");
-
 		
 	// Overlay skeleton and orig image
 	//run("Merge Channels...", "c1=Skeleton c2=orig create keep");
@@ -164,7 +187,6 @@ function processFile(input, output, file, channel, filenumber) {
 	// add the overlay of cells
 	run("From ROI Manager");
 
-	
 
 	// ---- Calculate total branch length per image ----
 
@@ -174,7 +196,7 @@ function processFile(input, output, file, channel, filenumber) {
 		
 		// total length for one skeleton
 		skelLength = getResult("# Branches", row) * getResult("Average Branch Length", row);
-		setResult("Total Length", row, skelLength);
+		setResult("Total Length pixels", row, skelLength);
 		updateResults();
 		
 		// total for all skeletons in the image
@@ -191,10 +213,10 @@ function processFile(input, output, file, channel, filenumber) {
 	// ---- Update skeleton data ---- 
 	
 	Table.set("Image", filenumber, basename, summaryTable);
-	Table.set("Total Length", filenumber, totalLength, summaryTable);
+	Table.set("Total Length pixels", filenumber, totalLength, summaryTable);
 	Table.set("Number of cells", filenumber, cellNum, summaryTable);
-	Table.set("Normalized length", filenumber, totalLength/cellNum, summaryTable);
-	Table.set("Median branch length", filenumber, medianLength, summaryTable);
+	Table.set("Normalized length pixels", filenumber, totalLength/cellNum, summaryTable);
+	Table.set("Median branch length pixels", filenumber, medianLength, summaryTable);
 	Table.update(summaryTable);
 
 	
