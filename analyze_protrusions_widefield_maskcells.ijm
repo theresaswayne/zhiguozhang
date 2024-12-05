@@ -4,16 +4,27 @@
 // @int(label= "Channel to analyze", style = "spinner", val = 1) channelNum
 // @int(label= "Branch length threshold in um", style = "spinner", val = 1) lengthScaled
 
-
-// analyze_protrusions.ijm
-// by Theresa Swayne for Xu Zhang, 2024
+// analyze_protrusions_widefield_maskcells.ijm
+// by Theresa Swayne for Xu Zhang and Xin Gu, 2024
 // identifies processes in 2d fluorescence images and determines length and other parameters
 // Thanks to Ignacio Argando Carreras for the beanshell script prunebysize_.bsh 
 // Note that prunebysize_.bsh must be in the fiji plugins/scripts folder!
 
+// To reduce false skeleton segments arising from cell bodies:
+//  -- the image is top-hat filtered before the Frangi vesselness and thresholding
+//  -- detected cell bodies are dilated and masked out before skeletonization
+
+// INPUT: a folder of 2D fluorescence images (can be multichannel)
+// OUTPUT: skeleton information (length in PIXELS), cell counts, and overlay of detected processes and cells.
+
 // TO USE: Run the macro and specify folders for input and output.
 // If images are multichannel, select the channel to use for analysis.
+// Set the threshold length (in microns) to delete branches below that length.
 
+// TIPS: This code is designed for widefield images with pixel size ~0.6 µm. 
+//       If the image does not have a spatial calibration, the threshold size will be interpreted as pixels.
+
+// TODO: get spatial calib from user
 
 // ---- Setup ----
 
@@ -48,11 +59,13 @@ function processFolder(input, output, suffix, channel) {
 	list = getFileList(input);
 	list = Array.sort(list);
 	for (i = 0; i < list.length; i++) {
-		if(File.isDirectory(input + File.separator + list[i]))
+		if(File.isDirectory(input + File.separator + list[i])) {
 			processFolder(input + File.separator + list[i], output, suffix, channel);
-		if(endsWith(list[i], suffix))
+		}
+		if(endsWith(list[i], suffix)) {
 			fileNum = fileNum + 1;
 			processFile(input, output, list[i], channel, fileNum);
+		}
 	}
 }
 

@@ -60,14 +60,15 @@ function processFolder(input, output, suffix, channel) {
 	list = getFileList(input);
 	list = Array.sort(list);
 	for (i = 0; i < list.length; i++) {
-		if(File.isDirectory(input + File.separator + list[i]))
+		if(File.isDirectory(input + File.separator + list[i])) {
 			processFolder(input + File.separator + list[i], output, suffix, channel);
-		if(endsWith(list[i], suffix))
+		}
+		if(endsWith(list[i], suffix)) {
 			fileNum = fileNum + 1;
 			processFile(input, output, list[i], channel, fileNum);
+		}
 	}
 }
-
 function processFile(input, output, file, channel, filenumber) {
 
 	// function to process a single image
