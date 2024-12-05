@@ -4,14 +4,20 @@
 // @int(label= "Channel to analyze", style = "spinner", val = 1) channelNum
 
 
-// analyze_protrusions.ijm
+// analyze_protrusions_confocal.ijm
 // by Theresa Swayne for Xu Zhang, 2024
 // identifies processes in 2d fluorescence images and determines length and other parameters
 // Thanks to Ignacio Argando Carreras for the beanshell script prunebysize_.bsh 
 // Note that prunebysize_.bsh must be in the fiji plugins/scripts folder!
 
+// INPUT: a folder of 2D fluorescence images (can be multichannel)
+// OUTPUT: skeleton information (length in PIXELS), cell counts, and overlay of detected processes and cells.
+
 // TO USE: Run the macro and specify folders for input and output.
 // If images are multichannel, select the channel to use for analysis.
+
+// TIPS: This code is designed for confocal images with pixel size ~0.3 µm. 
+//		 It works best if cell bodies are NOT saturated.
 
 
 // ---- Setup ----
