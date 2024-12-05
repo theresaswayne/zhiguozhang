@@ -89,8 +89,8 @@ function processFile(input, output, file, channel, filenumber) {
 	
 	selectImage(img);
 	resetMinAndMax();
-	run("8-bit"); // enables local threshold to work
 	run("Duplicate...", "title=orig"); // make a copy for overlaying later
+	run("8-bit"); // for overlay
 	
 	// ---- Segmentation of cell bodies
 	
@@ -108,14 +108,33 @@ function processFile(input, output, file, channel, filenumber) {
 	cellNum = getResult("Count", 0);
 	//roiManager("Save", output + basename + "_cellROIs.zip");
 
+	
+
+	
+	// ---- Segmentation of processes ----
+	
+	selectImage(img);
+	// filter out cell bodies so they don't distort the skeleton
+	run("Top Hat...", "radius=4");
+	run("Gaussian Blur...", "sigma=1"); // smooth
+	
+	// apply a filter to enhance tube-like structures
+	run("Frangi Vesselness", "input=[&img] dogauss=true spacingstring=[1, 1] scalestring=1");
+	
+	// apply a local threshold to identify processes of varying intensity	
+	selectImage("result");
+	run("8-bit"); // enables local threshold to work
+	run("Auto Local Threshold", "method=Phansalkar radius=15 parameter_1=0 parameter_2=0 white");
+
 	// ---- Mask out cell bodies so they don't distort the skeleton
 	
 	// check for ROIs
+	selectImage("result");
 	numROIs = roiManager("count");
-	//	if (numROIs == 0) {
-	//		showMessage("There are no ROIs saved. Draw ROIs around cells and press T to add each one to the Manager. Then run the macro.");
-	//		exit;
-	//	}
+	if (numROIs == 0) {
+		showMessage("There are no ROIs saved. Draw ROIs around cells and press T to add each one to the Manager. Then run the macro.");
+		exit;
+		}
 	roiManager("Deselect");
 	run("Select None");
 	getStatistics(area, mean, min, max, std, histogram);
@@ -123,34 +142,24 @@ function processFile(input, output, file, channel, filenumber) {
 
 	for(roiIndex=0; roiIndex < numROIs; roiIndex++) // loop through ROIs
 		{ 
-		selectImage(img);
+		selectImage("result");
 		roiManager("Select", roiIndex);  // ROI indices start with 0
-		run("Enlarge...", "enlarge=1"); // pixel units
+		run("Enlarge...", "enlarge=3"); // pixel units
 		run("Clear", "slice");
 		}
 	
-	// ---- Segmentation of processes ----
-	
-	// apply a local threshold to identify cell area including processes	
-	selectImage(img);
-	run("Auto Local Threshold", "method=Phansalkar radius=15 parameter_1=0 parameter_2=0 white");
-	
-	// apply a filter to enhance tube-like structures
-	run("Frangi Vesselness", "input=[&img] dogauss=true spacingstring=[1, 1] scalestring=1");
-	
-	selectImage("result");
-	//rename("vesselness");
-	
 	// apply a global threshold to preserve the most tube-like structures
+	selectImage("result");
 	setAutoThreshold("Percentile dark");
 	setOption("BlackBackground", false);
 	run("Convert to Mask");
-	
+
 	// identify objects, removing small and more circular objects
 	run("Analyze Particles...", "size=150-Infinity circularity=0.00-0.50 show=[Masks] clear");
-	
+
 	// generate a skeleton from the remaining objects
 	selectImage("Mask of result");
+	//selectImage("Masks of result");
 	run("Fill Holes"); // make cell bodies into solid objects that don't contribute much to the skeleton
 	run("Skeletonize (2D/3D)");
 	
