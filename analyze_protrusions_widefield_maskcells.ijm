@@ -2,10 +2,11 @@
 // @File(label = "Output folder:", style = "directory") outputDir
 // @String (label = "File suffix", value = ".nd2") fileSuffix
 // @int(label= "Channel to analyze", style = "spinner", val = 1) channelNum
+// @double(label= "Pixel size in um", val = 0.66, stepSize=0.01) voxwidth
 // @int(label= "Branch length threshold in um", style = "spinner", val = 1) lengthScaled
 
 // analyze_protrusions_widefield_maskcells.ijm
-// by Theresa Swayne for Xu Zhang and Xin Gu, 2024
+// by Theresa Swayne for Xin Gu and Xu Zhang, 2024
 // identifies processes in 2d fluorescence images and determines length and other parameters
 // Thanks to Ignacio Argando Carreras for the beanshell script prunebysize_.bsh 
 // Note that prunebysize_.bsh must be in the fiji plugins/scripts folder!
@@ -21,10 +22,8 @@
 // If images are multichannel, select the channel to use for analysis.
 // Set the threshold length (in microns) to delete branches below that length.
 
-// TIPS: This code is designed for widefield images with pixel size ~0.6 µm. 
-//       If the image does not have a spatial calibration, the threshold size will be interpreted as pixels.
-
-// TODO: get spatial calib from user
+// TIPS: This code is designed for widefield images with pixel size ~0.66 µm. 
+//       If the spatial calibration is not supplied, the threshold size will be interpreted as pixels.
 
 // ---- Setup ----
 
@@ -85,7 +84,6 @@ function processFile(input, output, file, channel, filenumber) {
 	basename = substring(title, 0, dotIndex);
 	extension = substring(title, dotIndex);
 	getDimensions(width, height, channels, slices, frames);
-	getVoxelSize(voxwidth, voxheight, depth, unit);
 	print("Processing",title, "with basename",basename);
 
 	// ---- Prepare images ----
@@ -110,26 +108,27 @@ function processFile(input, output, file, channel, filenumber) {
 	selectImage("orig");
 	run("Duplicate...", "title=Cells");
 	selectImage("Cells");
-	setAutoThreshold("Default dark");
+	run("Gaussian Blur...", "sigma=2"); // smooth
+	run("Auto Local Threshold", "method=Otsu radius=30 parameter_1=0 parameter_2=0 white");
+	//setAutoThreshold("Default dark");
 	run("Convert to Mask");
-	run("Options...", "iterations=5 count=1 do=Open");
+	//run("Options...", "iterations=2 count=1 do=Open");
 	run("Watershed");
 	// count cell bodies and add to ROI Mgr
-	run("Analyze Particles...", "size=100-Infinity show=Nothing add clear summarize");
+	run("Analyze Particles...", "size=300-Infinity show=Nothing add clear summarize");
 	selectWindow("Summary");
 	IJ.renameResults("Summary","Results");
 	cellNum = getResult("Count", 0);
 	//roiManager("Save", output + basename + "_cellROIs.zip");
-
-	
-
 	
 	// ---- Segmentation of processes ----
 	
 	selectImage(img);
+
 	// filter out cell bodies so they don't distort the skeleton
-	run("Top Hat...", "radius=4");
 	run("Gaussian Blur...", "sigma=1"); // smooth
+	run("Top Hat...", "radius=4");
+	run("Gaussian Blur...", "sigma=2"); // smooth
 	
 	// apply a filter to enhance tube-like structures
 	run("Frangi Vesselness", "input=[&img] dogauss=true spacingstring=[1, 1] scalestring=1");
